@@ -29,8 +29,12 @@ class Detector:
 
         results = []
         for idx, ((start, _), p) in enumerate(zip(windows, probs)):
-            bonafide = float(p[1])
-            spoof = float(p[0])
+            # AASIST checkpoints used by VoiceShield follow the ASVspoof
+            # convention used by this project: class 0 = bonafide,
+            # class 1 = spoof.  Keep this mapping explicit because swapping
+            # these two probabilities inverts the complete risk assessment.
+            bonafide = float(p[0])
+            spoof = float(p[1])
             results.append({
                 "index": idx,
                 "start_seconds": round(start, 2),
