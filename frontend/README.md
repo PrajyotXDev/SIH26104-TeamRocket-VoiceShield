@@ -1,27 +1,7 @@
-# VoiceShield Frontend
-
-A zero-build, dependency-free browser UI for the VoiceShield backend.
-
-## Start
-
-From the repository root:
-
-```powershell
-python -m uvicorn api_server:app --host 127.0.0.1 --port 8000
-```
-
-Open `http://127.0.0.1:8000`.
-
-## Interactive features
-
-- drag-and-drop audio upload
-- audio preview
-- browser microphone recording (encoded to WAV in-browser)
-- one-click multi-window analysis
-- animated risk gauge
-- clickable segment timeline
-- segment inspector
-- recording-quality panel
-- model/device and latency reporting
-
-No frontend framework or Node.js install is required.
+# VoiceShield frontend
+Replace the existing `frontend` folder with this folder.
+From the project root run:
+`.\.venv\Scripts\Activate.ps1`
+`python -m uvicorn api_server:app --reload`
+Open http://127.0.0.1:8000
+The frontend calls the existing `/health` and `/predict` endpoints. It supports drag/drop, audio preview, waveform, model results, risk score, window analysis, explainability, JSON output and local history. If the API is offline, a clearly labelled demo fallback is shown.

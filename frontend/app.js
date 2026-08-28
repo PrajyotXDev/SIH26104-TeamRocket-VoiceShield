@@ -1,32 +1,769 @@
-const $ = (id) => document.getElementById(id);
-let selectedFile = null, lastResult = null, selectedSegment = null;
-let recorder = null, recordChunks = [], recordStream = null, recordContext = null, recordProcessor = null, recordSamples = [], recordStart = 0;
+const $ = (selector) => document.querySelector(selector);
 
-async function checkHealth(){
-  try{const r=await fetch('/health'); if(!r.ok) throw new Error(); const d=await r.json(); $('statusText').textContent=`Engine online • ${d.model}`; $('statusDot').style.color='var(--good)'; $('statusDot').style.background='var(--good)'; $('deviceName').textContent=d.device||d.device_name||'—';}
-  catch(e){$('statusText').textContent='Engine offline';$('statusDot').style.color='var(--bad)';$('statusDot').style.background='var(--bad)';}
+const fileInput = $("#file");
+const dropZone = $("#drop");
+
+let selectedFile = null;
+let lastResult = null;
+
+
+/* =========================
+   API HEALTH CHECK
+========================= */
+
+async function health() {
+    try {
+        const response = await fetch("/health");
+
+        if (!response.ok) {
+            throw new Error("API unavailable");
+        }
+
+        $("#api").textContent = "API online";
+    } catch (error) {
+        $("#api").textContent = "API offline";
+        console.error("Health check failed:", error);
+    }
 }
-function setFile(file){ if(!file) return; selectedFile=file; $('fileInput').files && null; $('fileName').textContent=file.name; $('fileMeta').textContent=`${(file.size/1024/1024).toFixed(2)} MB • ${file.type||'audio'}`; $('filebar').classList.remove('hidden'); $('audioPreview').src=URL.createObjectURL(file); $('audioPreview').classList.remove('hidden'); $('analyzeBtn').disabled=false; }
-function clearAll(){selectedFile=null;lastResult=null;selectedSegment=null;$('fileInput').value='';$('filebar').classList.add('hidden');$('audioPreview').classList.add('hidden');$('audioPreview').removeAttribute('src');$('analyzeBtn').disabled=true;resetReport();}
-function resetReport(){ $('verdictBadge').textContent='WAITING';$('verdictBadge').className='badge neutral';$('reportSub').textContent='Run an analysis to populate the report.';$('riskScore').textContent='—';$('riskLevel').textContent='No result yet';$('actionText').textContent='Upload or record audio to begin.';$('windowCount').textContent='—';$('suspiciousCount').textContent='—';$('latency').textContent='—';$('gauge').style.setProperty('--p','0%');$('timeline').innerHTML='<div class="empty">Timeline appears after analysis.</div>';$('indicators').innerHTML='<li class="empty-li">No indicators yet.</li>';$('segmentInspector').className='inspector-empty';$('segmentInspector').textContent='No segment selected.';$('qualityBadge').textContent='—';$('qualityBadge').className='quality-badge neutral';['rms','peak','dynamic','duration'].forEach(id=>$(id).textContent='—');$('issues').textContent='';}
-function levelClass(level){return (level||'').toLowerCase();}
-function renderResult(d){lastResult=d;const risk=d.risk||{};const level=levelClass(risk.risk_level);const score=Number(risk.risk_score||0);$('verdictBadge').textContent=d.verdict||'UNKNOWN';$('verdictBadge').className=`badge ${level||'neutral'}`;$('reportSub').textContent=`${d.model} • ${d.windows_analyzed} overlapping segments`;$('riskScore').textContent=Math.round(score);$('riskLevel').textContent=`${risk.risk_level||'UNKNOWN'} RISK`;$('actionText').textContent=risk.recommended_action||'Review result.';$('windowCount').textContent=d.windows_analyzed;$('suspiciousCount').textContent=d.windows.filter(w=>w.spoof_score>=.70).length;$('latency').textContent=((d.performance?.total_ms||0)/1000).toFixed(2);$('gauge').style.setProperty('--p',`${score}%`);
- const tl=$('timeline');tl.innerHTML='';const dur=d.audio.duration_seconds||1;d.windows.forEach((w,i)=>{const b=document.createElement('button');b.className=`segment ${segmentLevel(w.spoof_score)}${i===selectedSegment?' active':''}`;b.title=`${fmtTime(w.start_seconds)}–${fmtTime(w.end_seconds)} • spoof ${(w.spoof_score*100).toFixed(1)}%`;b.innerHTML=`<span>${fmtTime(w.start_seconds)}</span>`;b.style.flex=`${Math.max(w.end_seconds-w.start_seconds,.2)} 1`;b.onclick=()=>showSegment(i);tl.appendChild(b);});
- $('indicators').innerHTML=(d.indicators||[]).map(x=>{const title=typeof x==='string'?x:x.title||'Indicator';const detail=typeof x==='string'?'':` — ${x.detail||''}`;return `<li>• <b>${escapeHtml(title)}</b>${escapeHtml(detail)}</li>`}).join('');if(!d.indicators?.length)$('indicators').innerHTML='<li class="empty-li">No indicators.</li>';
- const q=d.quality||{};$('qualityBadge').textContent=q.quality_label||'—';$('qualityBadge').className=`quality-badge ${levelClass(q.quality_label)}`;$('rms').textContent=`${q.rms_db??'—'} dBFS`;$('peak').textContent=`${q.peak_db??'—'} dBFS`;$('dynamic').textContent=`${q.dynamic_range_db??'—'} dB`;$('duration').textContent=`${(d.audio.duration_seconds||0).toFixed(2)} s`;$('issues').textContent=(q.issues||[]).length?`⚠ ${(q.issues||[]).join(' • ')}`:'✓ No recording-quality issues flagged';
- showSegment(0);
+
+health();
+
+
+/* =========================
+   FILE SELECTION
+========================= */
+
+fileInput.onchange = () => {
+    if (fileInput.files.length > 0) {
+        loadFile(fileInput.files[0]);
+    }
+};
+
+
+dropZone.ondragover = (event) => {
+    event.preventDefault();
+    dropZone.classList.add("dragging");
+};
+
+
+dropZone.ondragleave = () => {
+    dropZone.classList.remove("dragging");
+};
+
+
+dropZone.ondrop = (event) => {
+    event.preventDefault();
+
+    dropZone.classList.remove("dragging");
+
+    const droppedFile = event.dataTransfer.files[0];
+
+    if (droppedFile) {
+        loadFile(droppedFile);
+    }
+};
+
+
+/* =========================
+   LOAD AUDIO
+========================= */
+
+function loadFile(file) {
+
+    if (!file) return;
+
+    if (file.size > 50 * 1024 * 1024) {
+        alert("Maximum file size is 50 MB.");
+        return;
+    }
+
+    const allowedTypes = [
+        "audio/wav",
+        "audio/wave",
+        "audio/x-wav",
+        "audio/mpeg",
+        "audio/mp3",
+        "audio/ogg",
+        "audio/flac"
+    ];
+
+    const extension = file.name.toLowerCase();
+
+    const validExtension =
+        extension.endsWith(".wav") ||
+        extension.endsWith(".mp3") ||
+        extension.endsWith(".ogg") ||
+        extension.endsWith(".flac");
+
+    if (!allowedTypes.includes(file.type) && !validExtension) {
+        alert("Please upload a WAV, MP3, OGG, or FLAC audio file.");
+        return;
+    }
+
+    selectedFile = file;
+
+    $("#name").textContent = file.name;
+
+    $("#meta").textContent =
+        (file.size / 1048576).toFixed(2) + " MB";
+
+    $("#player").src = URL.createObjectURL(file);
+
+    $("#drop").classList.add("hidden");
+
+    $("#sample").classList.remove("hidden");
+
+    drawWaveform();
 }
-function segmentLevel(s){return s>=.70?'high':s>=.45?'medium':'low'}
-function showSegment(i){if(!lastResult?.windows?.[i])return;selectedSegment=i;const w=lastResult.windows[i];document.querySelectorAll('.segment').forEach((x,j)=>x.classList.toggle('active',j===i));const pct=(w.spoof_score*100).toFixed(1);$('segmentHint').textContent=`Window ${i+1} of ${lastResult.windows.length}`;$('segmentInspector').className='inspector';$('segmentInspector').innerHTML=`<h3>${w.label}</h3><div class="scorebar"><div class="scorefill" style="width:${pct}%"></div></div><div class="inspector-grid"><div class="kv"><span>Time range</span><b>${fmtTime(w.start_seconds)} – ${fmtTime(w.end_seconds)}</b></div><div class="kv"><span>Spoof evidence</span><b>${pct}%</b></div><div class="kv"><span>Bonafide evidence</span><b>${(w.bonafide_score*100).toFixed(1)}%</b></div><div class="kv"><span>Model</span><b>${lastResult.model}</b></div></div>`;}
-async function analyze(){if(!selectedFile)return;const btn=$('analyzeBtn');btn.disabled=true;btn.innerHTML='<span class="pulse">Analyzing overlapping segments…</span>';try{const fd=new FormData();fd.append('file',selectedFile,selectedFile.name);const r=await fetch('/predict',{method:'POST',body:fd});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Analysis failed');renderResult(d);}catch(e){alert(e.message)}finally{btn.disabled=false;btn.innerHTML='Analyze audio <span>→</span>';}}
-function fmtTime(s){s=Math.max(0,Number(s)||0);const m=Math.floor(s/60),sec=Math.floor(s%60);return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`}
-function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
 
-// Browser-side WAV recorder: no ffmpeg or extra service is required.
-async function toggleRecording(){ if(recorder){stopRecording();return;} try{recordStream=await navigator.mediaDevices.getUserMedia({audio:true});recordContext=new (window.AudioContext||window.webkitAudioContext)();const source=recordContext.createMediaStreamSource(recordStream);recordProcessor=recordContext.createScriptProcessor(4096,1,1);recordSamples=[];recordStart=Date.now();recordProcessor.onaudioprocess=e=>{recordSamples.push(new Float32Array(e.inputBuffer.getChannelData(0)));};source.connect(recordProcessor);recordProcessor.connect(recordContext.destination);recorder={source};$('recordLabel').textContent='Stop recording';$('recordBtn').classList.add('recording');}catch(e){alert('Microphone access was not available. Please allow microphone permission in the browser.');}}
-async function stopRecording(){if(!recorder)return;recordProcessor.disconnect();recordStream.getTracks().forEach(t=>t.stop());const sr=recordContext.sampleRate;const samples=mergeSamples(recordSamples);const wav=encodeWav(samples,sr);selectedFile=new File([wav],`voice-recording-${Date.now()}.wav`,{type:'audio/wav'});setFile(selectedFile);$('recordLabel').textContent='Record from microphone';$('recordBtn').classList.remove('recording');recordProcessor=null;recordContext=null;recorder=null;}
-function mergeSamples(chunks){let n=chunks.reduce((a,b)=>a+b.length,0),out=new Float32Array(n),o=0;for(const c of chunks){out.set(c,o);o+=c.length}return out}
-function encodeWav(samples,sr){const buffer=new ArrayBuffer(44+samples.length*2),view=new DataView(buffer);const w=(o,s)=>{for(let i=0;i<s.length;i++)view.setUint8(o+i,s.charCodeAt(i))};w(0,'RIFF');view.setUint32(4,36+samples.length*2,true);w(8,'WAVE');w(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,sr,true);view.setUint32(28,sr*2,true);view.setUint16(32,2,true);view.setUint16(34,16,true);w(36,'data');view.setUint32(40,samples.length*2,true);let p=44;for(const x of samples){const s=Math.max(-1,Math.min(1,x));view.setInt16(p,s<0?s*0x8000:s*0x7fff,true);p+=2}return new Blob([view],{type:'audio/wav'})}
 
-$('browseBtn').onclick=()=>$('fileInput').click();$('fileInput').onchange=e=>setFile(e.target.files[0]);$('clearBtn').onclick=clearAll;$('removeBtn').onclick=clearAll;$('analyzeBtn').onclick=analyze;$('recordBtn').onclick=toggleRecording;
-const dz=$('dropzone');['dragenter','dragover'].forEach(e=>dz.addEventListener(e,x=>{x.preventDefault();dz.style.borderColor='#806cff'}));['dragleave','drop'].forEach(e=>dz.addEventListener(e,x=>{x.preventDefault();dz.style.borderColor=''}));dz.addEventListener('drop',e=>setFile(e.dataTransfer.files[0]));checkHealth();
+/* =========================
+   RESET
+========================= */
+
+function reset() {
+
+    selectedFile = null;
+
+    fileInput.value = "";
+
+    $("#player").src = "";
+
+    $("#sample").classList.add("hidden");
+
+    $("#results").classList.add("hidden");
+
+    $("#drop").classList.remove("hidden");
+}
+
+
+/* =========================
+   WAVEFORM
+========================= */
+
+function drawWaveform() {
+
+    const canvas = $("#wave");
+
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = canvas.clientWidth * 2;
+    canvas.height = 200;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = "#7c5cff";
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    for (let i = 0; i < canvas.width; i++) {
+
+        const amplitude =
+            Math.sin(i / 12) * 25 +
+            Math.sin(i / 37) * 15 +
+            Math.sin(i / 7) * 8;
+
+        const y = 100 + amplitude;
+
+        if (i === 0) {
+            ctx.moveTo(i, y);
+        } else {
+            ctx.lineTo(i, y);
+        }
+    }
+
+    ctx.stroke();
+}
+
+
+/* =========================
+   ANALYZE AUDIO
+========================= */
+
+$("#analyze").onclick = async () => {
+
+    if (!selectedFile) {
+        alert("Please select an audio file first.");
+        return;
+    }
+
+    const button = $("#analyze");
+
+    button.disabled = true;
+
+    button.textContent = "Analyzing...";
+
+    try {
+
+        const formData = new FormData();
+
+        formData.append("file", selectedFile);
+
+        console.log("Sending audio to backend...");
+
+        const response = await fetch("/predict", {
+            method: "POST",
+            body: formData
+        });
+
+        console.log("Backend status:", response.status);
+
+        const responseText = await response.text();
+
+        console.log("Backend response:", responseText);
+
+        if (!response.ok) {
+
+            throw new Error(
+                `Backend returned HTTP ${response.status}: ${responseText}`
+            );
+        }
+
+        let result;
+
+        try {
+            result = JSON.parse(responseText);
+        } catch (error) {
+            throw new Error("Backend returned invalid JSON.");
+        }
+
+        lastResult = result;
+
+        renderResult(result);
+
+    } catch (error) {
+
+        console.error("ANALYSIS ERROR:", error);
+
+        /*
+         IMPORTANT:
+         We DO NOT use the old 91% demo fallback anymore.
+        */
+
+        $("#results").classList.remove("hidden");
+
+        $("#tag").textContent = "ANALYSIS FAILED";
+
+        $("#title").textContent =
+            "Unable to analyze this audio";
+
+        $("#text").textContent =
+            "The website could not get a valid response from the VoiceShield backend.";
+
+        $("#score").textContent = "—";
+
+        $("#bp").textContent = "—";
+
+        $("#sp").textContent = "—";
+
+        $("#conf").textContent = "—";
+
+        $("#wins").textContent = "—";
+
+        $("#device").textContent = "—";
+
+        $("#model").textContent = "—";
+
+        $("#windows").innerHTML = `
+            <div class="empty">
+                Backend error. Open the VS Code terminal
+                and check the /predict request.
+            </div>
+        `;
+
+        $("#explain").innerHTML = `
+            <div class="why">
+                <b>Backend error</b>
+                <p>${escapeHtml(error.message)}</p>
+            </div>
+        `;
+
+        $("#raw").textContent = error.stack || error.message;
+
+        alert(
+            "Backend analysis failed.\n\n" +
+            error.message +
+            "\n\nCheck the VS Code terminal."
+        );
+    }
+
+    button.disabled = false;
+
+    button.textContent = "Analyze with VoiceShield →";
+};
+
+
+/* =========================
+   RENDER BACKEND RESULT
+========================= */
+
+function renderResult(result) {
+
+    $("#results").classList.remove("hidden");
+
+
+    /* -------------------------
+       Backend fields
+    ------------------------- */
+
+    const risk = Number(
+        result.risk?.risk_score ?? 0
+    );
+
+    const verdict = String(
+        result.verdict ?? "UNKNOWN"
+    ).toUpperCase();
+
+    const model = result.model ?? "AASIST";
+
+    const device = result.device ?? "Unknown";
+
+    const windows = result.windows ?? [];
+
+    const indicators = result.indicators ?? [];
+
+    const quality = result.quality ?? {};
+
+    const decision = result.decision ?? {};
+
+    const audio = result.audio ?? {};
+
+    const performance = result.performance ?? {};
+
+
+    /* -------------------------
+       Main result
+    ------------------------- */
+
+    $("#score").textContent =
+        Number.isFinite(risk)
+            ? Math.round(risk)
+            : "—";
+
+
+    if ($("#ring")) {
+
+        const percentage = Math.max(
+            0,
+            Math.min(100, risk)
+        );
+
+        const ringColor =
+            verdict === "SPOOF"
+                ? "#ff5c7a"
+                : "#00d9a5";
+
+        $("#ring").style.background =
+            `conic-gradient(
+                ${ringColor} ${percentage * 3.6}deg,
+                #222936 0
+            )`;
+    }
+
+
+    if (verdict === "SPOOF") {
+
+        $("#tag").textContent =
+            "SPOOF DETECTED";
+
+        $("#title").textContent =
+            "Potential synthetic / spoofed voice";
+
+        $("#text").textContent =
+            "AASIST detected evidence consistent with synthetic or spoofed audio.";
+
+    } else if (verdict === "BONAFIDE") {
+
+        $("#tag").textContent =
+            "LIKELY BONAFIDE";
+
+        $("#title").textContent =
+            "Likely authentic voice";
+
+        $("#text").textContent =
+            "AASIST classified this recording as bonafide.";
+
+    } else {
+
+        $("#tag").textContent =
+            "ANALYSIS COMPLETE";
+
+        $("#title").textContent =
+            "Voice analysis completed";
+
+        $("#text").textContent =
+            "The model returned an analysis result.";
+    }
+
+
+    /* =========================
+       SPOOF / BONAFIDE SCORES
+    ========================= */
+
+    const meanSpoof =
+        Number(result.risk?.mean_spoof_score ?? 0);
+
+    const meanBonafide =
+        100 - meanSpoof;
+
+
+    $("#bp").textContent =
+        meanBonafide.toFixed(1) + "%";
+
+    $("#sp").textContent =
+        meanSpoof.toFixed(1) + "%";
+
+
+    if ($("#bb")) {
+
+        $("#bb").style.width =
+            Math.max(0, Math.min(100, meanBonafide)) + "%";
+    }
+
+
+    if ($("#sb")) {
+
+        $("#sb").style.width =
+            Math.max(0, Math.min(100, meanSpoof)) + "%";
+    }
+
+
+    /* =========================
+       CONFIDENCE BAND
+    ========================= */
+
+    const confidenceBand =
+        decision.confidence_band ?? "UNKNOWN";
+
+    $("#conf").textContent =
+        confidenceBand;
+
+
+    /* =========================
+       WINDOWS
+    ========================= */
+
+    $("#wins").textContent =
+        windows.length || "0";
+
+
+    $("#windows").innerHTML =
+        windows.length
+            ? windows.map((window, index) => {
+
+                const spoofScore =
+                    Number(window.spoof_score ?? 0) * 100;
+
+                const bonafideScore =
+                    Number(window.bonafide_score ?? 0) * 100;
+
+                const label =
+                    String(
+                        window.label ?? "UNKNOWN"
+                    ).toUpperCase();
+
+                const start =
+                    Number(window.start_seconds ?? 0);
+
+                const end =
+                    Number(window.end_seconds ?? 0);
+
+                return `
+                    <div class="window">
+
+                        <div>
+                            <b>W${index + 1}</b>
+
+                            <span>
+                                ${start.toFixed(2)}s -
+                                ${end.toFixed(2)}s
+                            </span>
+                        </div>
+
+                        <div class="mini">
+                            <i
+                                style="width:${Math.max(
+                                    0,
+                                    Math.min(100, spoofScore)
+                                )}%"
+                            ></i>
+                        </div>
+
+                        <div>
+                            ${spoofScore.toFixed(1)}%
+                            SPOOF
+                            ·
+                            ${bonafideScore.toFixed(1)}%
+                            BONAFIDE
+                        </div>
+
+                        <strong>
+                            ${label}
+                        </strong>
+
+                    </div>
+                `;
+
+            }).join("")
+            : `
+                <div class="empty">
+                    No window-level data returned.
+                </div>
+            `;
+
+
+    /* =========================
+       EXPLAINABILITY
+    ========================= */
+
+    $("#explain").innerHTML =
+        indicators.length
+            ? indicators.map(indicator => {
+
+                const severity =
+                    String(
+                        indicator.severity ?? "info"
+                    ).toUpperCase();
+
+                return `
+                    <div class="why">
+
+                        <b>
+                            ${escapeHtml(
+                                indicator.title ??
+                                "Signal"
+                            )}
+                        </b>
+
+                        <span>
+                            ${severity}
+                        </span>
+
+                        <p>
+                            ${escapeHtml(
+                                indicator.detail ?? ""
+                            )}
+                        </p>
+
+                    </div>
+                `;
+
+            }).join("")
+            : `
+                <div class="empty">
+                    No explainability indicators returned.
+                </div>
+            `;
+
+
+    /* =========================
+       MODEL
+    ========================= */
+
+    $("#model").textContent =
+        model;
+
+    $("#device").textContent =
+        device;
+
+
+    /* =========================
+       RAW RESULT
+    ========================= */
+
+    $("#raw").textContent =
+        JSON.stringify(result, null, 2);
+
+
+    /* =========================
+       SAVE HISTORY
+    ========================= */
+
+    saveHistory({
+
+        file:
+            selectedFile?.name ??
+            "Unknown",
+
+        label:
+            verdict,
+
+        risk:
+            risk,
+
+        date:
+            new Date().toLocaleString(),
+
+        demo:
+            false
+
+    });
+
+
+    /* =========================
+       OPTIONAL DEBUG INFO
+    ========================= */
+
+    console.log("VoiceShield result:", result);
+
+    console.log("Audio:", audio);
+
+    console.log("Quality:", quality);
+
+    console.log("Decision:", decision);
+
+    console.log("Performance:", performance);
+
+
+    /* =========================
+       SHOW RESULTS
+    ========================= */
+
+    $("#results").scrollIntoView({
+        behavior: "smooth"
+    });
+}
+
+
+/* =========================
+   HISTORY
+========================= */
+
+function saveHistory(entry) {
+
+    let historyData =
+        JSON.parse(
+            localStorage.getItem("vs-history") || "[]"
+        );
+
+    historyData.unshift(entry);
+
+    historyData =
+        historyData.slice(0, 12);
+
+    localStorage.setItem(
+        "vs-history",
+        JSON.stringify(historyData)
+    );
+
+    renderHistory();
+}
+
+
+function renderHistory() {
+
+    const historyData =
+        JSON.parse(
+            localStorage.getItem("vs-history") || "[]"
+        );
+
+    if (!historyData.length) {
+
+        $("#hist").innerHTML =
+            '<div class="empty">No analyses yet.</div>';
+
+        return;
+    }
+
+
+    $("#hist").innerHTML =
+        historyData.map(entry => {
+
+            const label =
+                String(
+                    entry.label ?? "UNKNOWN"
+                ).toUpperCase();
+
+            const className =
+                label === "SPOOF"
+                    ? "bad"
+                    : "ok";
+
+            return `
+                <div class="histrow">
+
+                    <b>
+                        ${escapeHtml(
+                            entry.file ?? "Unknown"
+                        )}
+                    </b>
+
+                    <span>
+                        ${escapeHtml(
+                            entry.date ?? ""
+                        )}
+                    </span>
+
+                    <span class="${className}">
+                        ${label}
+                        ·
+                        Risk ${Number(
+                            entry.risk ?? 0
+                        ).toFixed(1)}
+                    </span>
+
+                </div>
+            `;
+
+        }).join("");
+}
+
+
+renderHistory();
+
+
+/* =========================
+   CLEAR HISTORY
+========================= */
+
+function clearHist() {
+
+    localStorage.removeItem(
+        "vs-history"
+    );
+
+    renderHistory();
+}
+
+
+/* =========================
+   COPY RAW JSON
+========================= */
+
+$("#copy").onclick = async () => {
+
+    try {
+
+        await navigator.clipboard.writeText(
+            $("#raw").textContent
+        );
+
+        alert("Analysis JSON copied.");
+
+    } catch (error) {
+
+        console.error(
+            "Copy failed:",
+            error
+        );
+    }
+};
+
+
+/* =========================
+   HTML ESCAPE
+========================= */
+
+function escapeHtml(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}

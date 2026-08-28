@@ -1,65 +1,11 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0a0d14">
-  <title>VoiceShield — Deepfake Voice Forensics</title>
-  <link rel="stylesheet" href="/styles.css">
-</head>
-<body>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand"><div class="brand-mark">VS</div><div><strong>VoiceShield</strong><span>Deepfake Voice Forensics</span></div></div>
-      <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Checking engine…</span></div>
-    </header>
-
-    <main>
-      <section class="hero">
-        <div>
-          <p class="eyebrow">AASIST • MULTI-WINDOW ANALYSIS</p>
-          <h1>Know <em>where</em> a voice becomes suspicious.</h1>
-          <p class="sub">Upload a recording or capture your voice. VoiceShield scans overlapping segments, scores spoof evidence, checks recording quality, and turns the evidence into an actionable risk report.</p>
-        </div>
-        <div class="hero-chip"><span>GPU</span><b id="deviceName">—</b></div>
-      </section>
-
-      <section class="grid">
-        <div class="card input-card">
-          <div class="card-head"><div><h2>Audio input</h2><p>WAV, FLAC, OGG, MP3</p></div><button class="ghost" id="clearBtn">Clear</button></div>
-          <div class="dropzone" id="dropzone">
-            <input id="fileInput" type="file" accept="audio/*" hidden>
-            <div class="upload-icon">↑</div><h3>Drop audio here</h3><p>or choose a file from your device</p>
-            <button class="primary" id="browseBtn">Choose audio</button>
-            <div class="divider"><span>or</span></div>
-            <button class="record" id="recordBtn"><span class="record-dot"></span><span id="recordLabel">Record from microphone</span></button>
-            <small>Microphone access stays in your browser; only the recorded WAV is sent for analysis.</small>
-          </div>
-          <div class="filebar hidden" id="filebar"><div class="file-icon">♫</div><div class="filemeta"><b id="fileName">audio.wav</b><span id="fileMeta">—</span></div><button class="iconbtn" id="removeBtn">×</button></div>
-          <audio id="audioPreview" controls class="audio hidden"></audio>
-          <button class="analyze primary wide" id="analyzeBtn" disabled>Analyze audio <span>→</span></button>
-        </div>
-
-        <div class="card result-card">
-          <div class="card-head"><div><h2>Authenticity report</h2><p id="reportSub">Run an analysis to populate the report.</p></div><span class="badge neutral" id="verdictBadge">WAITING</span></div>
-          <div class="risk-wrap">
-            <div class="gauge" id="gauge"><div class="gauge-inner"><strong id="riskScore">—</strong><span>risk / 100</span></div></div>
-            <div class="risk-copy"><span class="label">Overall assessment</span><h3 id="riskLevel">No result yet</h3><p id="actionText">Upload or record audio to begin.</p><div class="mini-stats"><div><b id="windowCount">—</b><span>segments</span></div><div><b id="suspiciousCount">—</b><span>suspicious</span></div><div><b id="latency">—</b><span>seconds</span></div></div></div>
-          </div>
-          <div class="section"><div class="section-title"><h3>Suspicion timeline</h3><span>click a segment</span></div><div class="timeline" id="timeline"><div class="empty">Timeline appears after analysis.</div></div></div>
-          <div class="section"><div class="section-title"><h3>Evidence indicators</h3></div><ul class="indicators" id="indicators"><li class="empty-li">No indicators yet.</li></ul></div>
-        </div>
-      </section>
-
-      <section class="lower-grid">
-        <div class="card segment-card"><div class="card-head"><div><h2>Segment inspector</h2><p id="segmentHint">Select a timeline segment to inspect it.</p></div></div><div id="segmentInspector" class="inspector-empty">No segment selected.</div></div>
-        <div class="card quality-card"><div class="card-head"><div><h2>Recording quality</h2><p>Quality affects confidence, not truth.</p></div><span class="quality-badge neutral" id="qualityBadge">—</span></div><div class="quality-grid"><div><span>Signal</span><b id="rms">—</b></div><div><span>Peak</span><b id="peak">—</b></div><div><span>Dynamic range</span><b id="dynamic">—</b></div><div><span>Duration</span><b id="duration">—</b></div></div><div class="issues" id="issues"></div></div>
-      </section>
-
-      <section class="card methodology"><div><p class="eyebrow">HOW IT WORKS</p><h2>From one black-box score to a forensic-style report.</h2></div><div class="steps"><div><b>01</b><span>Normalize</span><p>Decode, mono-mix and resample to 16 kHz.</p></div><div><b>02</b><span>Slice</span><p>Scan overlapping ~4 second windows.</p></div><div><b>03</b><span>Score</span><p>AASIST evaluates every segment.</p></div><div><b>04</b><span>Aggregate</span><p>Mean, persistence and peak evidence become risk.</p></div></div></section>
-      <p class="disclaimer">Research / hackathon prototype. AASIST scores are model evidence, not calibrated probabilities or proof of synthetic speech. Validate on representative data before operational use.</p>
-    </main>
-  </div>
-  <script src="/app.js"></script>
-</body>
-</html>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>VoiceShield</title><link rel="stylesheet" href="/styles.css"></head><body>
+<aside><div class="logo">VS</div><h2>VoiceShield</h2><small>AUTHENTICITY INTELLIGENCE</small><nav><a href="#home">⌂ Dashboard</a><a href="#analysis">◉ Analysis</a><a href="#history">↺ History</a><a href="#about">ⓘ About</a></nav><div class="status">● <span id="api">Checking API…</span><br><small>AASIST · Multi-window</small></div></aside>
+<main><header><div><small>VOICE AUTHENTICITY PLATFORM</small><h1>Protect the voice.</h1></div><button onclick="document.querySelector('#analysis').scrollIntoView()">Analyze audio</button></header>
+<section id="home" class="hero"><div><label>AI-POWERED AUDIO FORENSICS</label><h3>Know whether a voice is <i>real.</i></h3><p>Upload a recording and VoiceShield evaluates it for spoofing and synthetic-speech indicators through the existing AASIST pipeline.</p><div class="chips">✓ Spoof probability　 ✓ Bonafide probability　 ✓ Explainability　 ✓ Multi-window</div></div><div class="shield">⌁<b>VOICE</b><small>SHIELDED</small></div></section>
+<section id="analysis"><small>ANALYSIS</small><h2>Inspect an audio sample</h2><div class="grid">
+<div class="upload" id="drop"><input id="file" type="file" accept=".wav,.flac,.ogg,.mp3,audio/*"><div>↑</div><h3>Drop your voice sample here</h3><p>or choose an audio file</p><button onclick="file.click()">Choose audio</button><small>WAV · FLAC · OGG · MP3 · max 50 MB</small></div>
+<div class="sample hidden" id="sample"><b id="name">audio</b><button class="ghost" onclick="reset()">Remove</button><canvas id="wave"></canvas><audio id="player" controls></audio><p id="meta"></p><button id="analyze">Analyze with VoiceShield →</button></div></div></section>
+<section id="results" class="hidden"><small>RESULT</small><h2>Authenticity assessment</h2><div class="results"><div class="verdict"><span id="tag">ANALYZED</span><div class="ring" id="ring"><strong id="score">—</strong><small>risk score</small></div><h3 id="title">Analysis complete</h3><p id="text"></p></div><div class="card"><h3>Model confidence <span id="conf">—</span></h3><p>Bonafide <b id="bp">—</b></p><div class="bar"><i id="bb"></i></div><p>Spoof <b id="sp">—</b></p><div class="bar red"><i id="sb"></i></div><div class="stats"><span>Windows<b id="wins">—</b></span><span>Device<b id="device">—</b></span><span>Model<b id="model">AASIST</b></span></div></div></div>
+<div class="twocol"><div class="card"><h3>Window-level analysis</h3><div id="windows">No data returned.</div></div><div class="card"><h3>Explainability</h3><div id="explain">No details returned.</div></div></div><div class="card"><h3>Technical details <button class="ghost" id="copy">Copy JSON</button></h3><pre id="raw">{}</pre></div></section>
+<section id="history"><small>LOCAL HISTORY</small><h2>Recent analyses</h2><button class="ghost" onclick="clearHist()">Clear history</button><div id="hist"></div></section>
+<section id="about"><div class="card"><small>ABOUT VOICESHIELD</small><h2>Built for trustworthy voice verification.</h2><p>This interface connects to the existing FastAPI <code>/predict</code> endpoint. The backend accepts WAV, FLAC, OGG and MP3 and runs the project's AASIST detector.</p><p><b>Important:</b> if the API is offline, the interface uses an explicitly labelled demo fallback; it is not presented as a real model prediction.</p></div></section><footer>VoiceShield · SIH26104 · Team Rocket</footer></main><script src="/app.js"></script></body></html>
