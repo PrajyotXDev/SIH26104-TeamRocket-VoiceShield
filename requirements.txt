@@ -1,4 +1,7 @@
-torch>=1.6.0
-torchcontrib
+torch
 numpy
+scipy
 soundfile
+fastapi
+uvicorn[standard]
+python-multipart
