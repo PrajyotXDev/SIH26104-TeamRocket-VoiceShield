@@ -1,33 +1,42 @@
-﻿# Python
+# Python / environments
+.venv/
+venv/
+ENV/
+env/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
 
-# Virtual environments
-.venv/
-venv/
-env/
-
-# VS Code
+# IDE
 .vscode/
+.idea/
 
-# Model weights
-*.pt
-*.pth
-*.onnx
-*.ckpt
-*.safetensors
+# Runtime / secrets
+.env
+*.log
 
-# Audio files
+# Datasets and local samples
+LA/
+data/
+datasets/
 *.wav
 *.mp3
 *.flac
 *.ogg
 
-# Environment / secrets
-.env
-.env.*
+# Model weights (keep local; see scripts/download_model.md)
+models/weights/*.pth
+*.pt
+*.ckpt
+*.onnx
 
-# OS
-.DS_Store
-Thumbs.db
+# Generated evaluation/runtime outputs
+evaluation/results.json
+evaluation/manifest.csv
+exp_result/
+
+# Archives / caches
+*.zip
+*.tar
+*.gz
