@@ -19,7 +19,7 @@ AASIST-powered multi-window voice anti-spoofing with temporal evidence, audio-qu
 
 ---
 
-## 🎯 The Problem
+## The Problem
 
 Voice cloning has made convincing impersonation attacks increasingly practical. A malicious recording can be used in financial fraud, identity impersonation, social engineering, authentication attacks, and misleading digital-media content.
 
@@ -35,7 +35,7 @@ That is not enough for a security workflow. A useful system should help answer t
 
 ---
 
-## 💡 Our Solution
+## Our Solution
 
 **VoiceShield** turns voice spoof detection into an evidence-driven analysis pipeline.
 
@@ -73,7 +73,7 @@ Instead of collapsing an entire recording into one black-box prediction, VoiceSh
 
 ---
 
-## ⭐ Why VoiceShield Stands Out
+## Why VoiceShield Stands Out
 
 ### 1. Window-level intelligence
 A recording can contain changing model behaviour. VoiceShield shows **which time regions are suspicious** rather than only returning a recording-level label.
@@ -92,24 +92,24 @@ Upload audio, compare results, inspect the timeline, and see the evidence update
 
 ---
 
-## 🚀 Key Features
+## Key Features
 
 | Feature | What it does |
 |---|---|
-| 🎙️ Audio upload | Analyze WAV, FLAC, OGG, and MP3 recordings |
-| 🧠 AASIST inference | Anti-spoofing model for speech authenticity analysis |
-| 🪟 Multi-window analysis | Evaluates overlapping time segments |
-| 📊 Risk engine | Aggregates window-level evidence into a policy risk score |
-| 🔍 Explainability | Converts model behaviour into readable evidence indicators |
-| 🎧 Audio-quality panel | Exposes recording characteristics and quality information |
-| 📈 Suspicion timeline | Visualizes suspicious windows across the recording |
-| ⚡ Performance metrics | Reports inference time, total processing time, and throughput |
-| 🌐 Web dashboard | Interactive browser-based interface |
-| 🧪 CLI mode | Run the detector directly from the terminal |
+| Audio upload | Analyze WAV, FLAC, OGG, and MP3 recordings |
+| AASIST inference | Anti-spoofing model for speech authenticity analysis |
+| Multi-window analysis | Evaluates overlapping time segments |
+| Risk engine | Aggregates window-level evidence into a policy risk score |
+| Explainability | Converts model behaviour into readable evidence indicators |
+| Audio-quality panel | Exposes recording characteristics and quality information |
+| Suspicion timeline | Visualizes suspicious windows across the recording |
+| Performance metrics | Reports inference time, total processing time, and throughput |
+| Web dashboard | Interactive browser-based interface |
+| CLI mode | Run the detector directly from the terminal |
 
 ---
 
-## 🖥️ Product Flow
+## Product Flow
 
 ```text
 1. Upload / record audio
@@ -131,7 +131,7 @@ Upload audio, compare results, inspect the timeline, and see the evidence update
 
 ---
 
-## 🧩 System Architecture
+## System Architecture
 
 ```text
                     ┌──────────────────────┐
@@ -178,7 +178,7 @@ Upload audio, compare results, inspect the timeline, and see the evidence update
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```text
 SIH26104-TeamRocket-VoiceShield/
@@ -213,7 +213,7 @@ SIH26104-TeamRocket-VoiceShield/
 
 ---
 
-## ⚙️ Technology Stack
+## Technology Stack
 
 **AI / ML**
 - AASIST
@@ -241,7 +241,7 @@ SIH26104-TeamRocket-VoiceShield/
 
 ---
 
-## 🛠️ Installation
+## Installation
 
 ### 1. Clone
 
@@ -273,7 +273,7 @@ python -m pip install python-multipart
 
 ---
 
-## ▶️ Run the Web App
+## Run the Web App
 
 From the repository root:
 
@@ -295,7 +295,7 @@ http://127.0.0.1:8000/health
 
 ---
 
-## 🧪 Run from the Terminal
+## Run from the Terminal
 
 You can test the detector without the web UI:
 
@@ -307,7 +307,7 @@ The result contains model/device information, verdict, risk, audio metadata, qua
 
 ---
 
-## 📡 API
+## API
 
 ### `GET /health`
 
@@ -340,7 +340,7 @@ Example high-level response shape:
 
 ---
 
-## 🔬 How Multi-Window Analysis Works
+## How Multi-Window Analysis Works
 
 For a typical recording, VoiceShield analyzes overlapping windows such as:
 
@@ -356,7 +356,7 @@ This makes temporal behaviour visible and helps the user focus attention on susp
 
 ---
 
-## 🔎 Explainability
+## Explainability
 
 VoiceShield can surface evidence such as:
 
@@ -373,7 +373,7 @@ The objective is to move from **prediction → evidence → human verification**
 
 ---
 
-## 🎬 Recommended SIH Demo
+## Recommended SIH Demo
 
 For a strong live demo:
 
@@ -395,7 +395,7 @@ For a strong live demo:
 
 ---
 
-## 🔐 Privacy & Security Positioning
+## Privacy & Security Positioning
 
 The current API processes uploaded files temporarily for inference and removes the temporary file after processing.
 
@@ -412,7 +412,7 @@ For a production deployment, add:
 
 ---
 
-## ⚠️ Limitations
+## Limitations
 
 VoiceShield is a research / hackathon prototype.
 
@@ -425,7 +425,7 @@ VoiceShield is a research / hackathon prototype.
 
 ---
 
-## 📊 Evaluation Plan
+## Evaluation Plan
 
 Use a clearly separated test set and report:
 
@@ -445,7 +445,7 @@ Use a clearly separated test set and report:
 
 ---
 
-## 🧭 Roadmap
+## Roadmap
 
 ### Current
 - [x] AASIST integration
@@ -470,7 +470,7 @@ Use a clearly separated test set and report:
 
 ---
 
-## 📚 Research Basis
+## Research Basis
 
 VoiceShield builds on research and open-source work in speech anti-spoofing, particularly AASIST and the wider ASVspoof ecosystem.
 
@@ -481,7 +481,7 @@ Refer to the repository's `LICENSE`, `NOTICE`, and upstream project terms for at
 
 ---
 
-## 👥 Team
+## Team
 
 ### TeamRocket
 **Smart India Hackathon 2026**  
@@ -491,7 +491,7 @@ Refer to the repository's `LICENSE`, `NOTICE`, and upstream project terms for at
 
 ---
 
-## 📣 Project Pitch
+## Project Pitch
 
 > **VoiceShield turns voice-spoof detection from a black-box prediction into an interpretable, window-level risk assessment that helps humans understand, verify, and respond to suspicious audio.**
 
